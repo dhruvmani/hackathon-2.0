@@ -3,7 +3,7 @@
 A full-stack Netflix Clone demonstration platform built with **Next.js 14**, **Apollo Federated GraphQL**, and a high-performance **Observability Stack** (Prometheus, Loki, Tempo, Grafana).
 
 ## System in brif video
- [Awesome Screenshot Video](https://www.awesomescreenshot.com/video/50432919?key=ca2f1376ace0eb48921086f944df7ea5)
+ [Watch_Video](https://www.awesomescreenshot.com/video/50432919?key=ca2f1376ace0eb48921086f944df7ea5)
 
 ## Project Overview
 
