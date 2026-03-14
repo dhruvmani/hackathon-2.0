@@ -50,18 +50,18 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
       "id": 2,
       "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[1m])) / sum(rate(http_requests_total[1m])) * 100",
-          "legendFormat": "Error Rate %",
+          "expr": "sum(rate(http_requests_total{status_code=~\"[45]..\"}[1m])) / sum(rate(http_requests_total[1m])) * 100",
+          "legendFormat": "Failure Rate (4xx+5xx)",
           "refId": "A"
         }
       ],
-      "title": "Error Rate %",
+      "title": "Failure Rate %",
       "type": "stat"
     },
     {
@@ -81,7 +81,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
       "id": 5,
       "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
@@ -94,6 +94,30 @@
       ],
       "title": "Active Users",
       "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "id": 8,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=~\".+\"} | json | level=~\"(?i)error|warn\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "System Error & Warning Logs",
+      "type": "logs"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },

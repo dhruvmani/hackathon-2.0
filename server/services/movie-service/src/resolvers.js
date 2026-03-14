@@ -4,6 +4,7 @@ import { buildLogger } from '@netflix-clone/logger';
 import { createDbMetrics, createCacheMetrics, createResolverMetrics } from '@netflix-clone/metrics';
 import { Movie } from './models/Movie.js';
 import * as cache from './services/cacheService.js';
+import * as anomaly from './anomaly.js';
 
 const tracer = getTracer('movie-service');
 const logger = buildLogger('movie-service');
@@ -72,10 +73,29 @@ export const resolvers = {
           const start = Date.now();
           const skip = (page - 1) * limit;
 
+          await anomaly.injectDelay();
+
           let dbErr;
           const dbStart = process.hrtime.bigint();
           const [movies, total] = await tracer.startActiveSpan('db.fetchMovies', async (dbSpan) => {
             try {
+              anomaly.injectFlakyError();
+
+              const type = anomaly.getAnomalyType();
+              if (type === anomaly.AnomalyType.LARGE_PAYLOAD) {
+                const allMovies = await Movie.find().sort({ createdAt: -1 });
+                logger.warn('ANOMALY: returning full unpaginated dataset', { count: allMovies.length });
+                return [allMovies, allMovies.length];
+              }
+
+              if (type === anomaly.AnomalyType.NO_INDEX) {
+                // Simulating unindexed lookup by forcing a regex on potentially any field
+                return await Promise.all([
+                  Movie.find({ title: { $regex: '.*' } }).sort({ createdAt: -1 }),
+                  Movie.countDocuments(),
+                ]);
+              }
+
               return await Promise.all([
                 Movie.find().skip(skip).limit(limit).sort({ createdAt: -1 }),
                 Movie.countDocuments(),
@@ -195,8 +215,25 @@ export const resolvers = {
 
   Mutation: {
     addMovie: async (_parent, { title, description, genre, releaseYear }) => {
-      const movie = await Movie.create({ title, description, genre, releaseYear });
-      return formatMovie(movie);
+      const resolverStart = process.hrtime.bigint();
+      return tracer.startActiveSpan('controller.addMovie', async (span) => {
+        try {
+          span.setAttribute('movie.title', title);
+          const start = process.hrtime.bigint();
+          const movie = await Movie.create({ title, description, genre, releaseYear });
+          db.recordQuery('movies', 'create', Number(process.hrtime.bigint() - start) / 1e9);
+          
+          logger.info('Movie added', { movieId: movie._id, title });
+          return formatMovie(movie);
+        } catch (err) {
+          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+          span.recordException(err);
+          throw err;
+        } finally {
+          resolver.recordResolver('addMovie', Number(process.hrtime.bigint() - resolverStart) / 1e9);
+          span.end();
+        }
+      });
     },
   },
 

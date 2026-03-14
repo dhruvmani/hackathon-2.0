@@ -32,6 +32,18 @@ async function bootstrap() {
   const server = new ApolloServer({
     schema: buildSubgraphSchema({ typeDefs, resolvers }),
     includeStacktraceInErrorResponses: process.env.NODE_ENV === 'development',
+    formatError: (formattedError) => {
+      const code = formattedError.extensions?.code || 'INTERNAL_SERVER_ERROR';
+      const path = formattedError.path?.join('.') || 'root';
+      const status = formattedError.extensions?.http?.status || 500;
+
+      logger.error(`GraphQL Error [${code}] at ${path}: ${formattedError.message}`, {
+        code,
+        path,
+        statusCode: status,
+      });
+      return formattedError;
+    },
   });
 
   await server.start();
@@ -42,6 +54,7 @@ async function bootstrap() {
   app.use(bodyParser.json());
   app.use(httpMetricsMiddleware('user-service'));
   app.use(createRequestLogger(logger));
+  app.use('/metrics', metricsRoute(registry));
 
   app.use('/metrics', metricsRoute(registry));
 

@@ -96,14 +96,35 @@ async function startGateway() {
     gateway,
     // Gateway manages its own schema — disable built-in schema validation
     includeStacktraceInErrorResponses: process.env.NODE_ENV === 'development',
-    formatError(formattedError) {
-      if (formattedError.extensions?.code === 'SUBREQUEST_HTTP_ERROR') {
-        logger.error('Subgraph unreachable', {
-          service: formattedError.extensions?.serviceName ?? 'unknown',
-          error: formattedError.message,
-        });
-      }
-      return formattedError;
+    formatError: (formattedError) => {
+      // Unwrap downstream errors if they exist (e.g. from subgraphs)
+      const graphQLErrors = formattedError.extensions?.response?.body?.errors;
+      const downstreamError = graphQLErrors?.[0];
+      
+      const code = downstreamError?.extensions?.code || formattedError.extensions?.code || 'INTERNAL_SERVER_ERROR';
+      const path = formattedError.path?.join('.') || 'root';
+      const message = downstreamError?.message || formattedError.message;
+      const status = formattedError.extensions?.response?.status || 500;
+
+      logger.error(`GraphQL Error [${code}] at ${path}: ${message}`, {
+        code,
+        path,
+        message,
+        statusCode: status,
+        service: 'gateway',
+        // Propagate the actual stacktrace from downstream if available, or the gateway's one
+        stacktrace: downstreamError?.extensions?.stacktrace || formattedError.extensions?.stacktrace,
+      });
+
+      // Return a cleaner error to the client, but keep the specific code
+      return {
+        ...formattedError,
+        message,
+        extensions: {
+          ...formattedError.extensions,
+          code,
+        }
+      };
     },
   });
 

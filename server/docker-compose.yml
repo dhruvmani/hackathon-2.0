@@ -19,13 +19,13 @@ services:
     image: mongo:7
     container_name: mongo-user
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongo-user-data:/data/db
     networks:
       - netflix-net
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,13 +35,13 @@ services:
     image: mongo:7
     container_name: mongo-movie
     ports:
-      - "27018:27017"
+      - '27018:27017'
     volumes:
       - mongo-movie-data:/data/db
     networks:
       - netflix-net
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -51,13 +51,13 @@ services:
     image: mongo:7
     container_name: mongo-review
     ports:
-      - "27019:27017"
+      - '27019:27017'
     volumes:
       - mongo-review-data:/data/db
     networks:
       - netflix-net
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -67,13 +67,13 @@ services:
     image: redis:7-alpine
     container_name: redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis-data:/data
     networks:
       - netflix-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -86,15 +86,15 @@ services:
     container_name: tempo
     command: -config.file=/etc/tempo/config.yaml
     ports:
-      - "3200:3200"
-      - "4318:4318"
-      - "4317:4317"
+      - '3200:3200'
+      - '4318:4318'
+      - '4317:4317'
     volumes:
       - ./monitoring/tempo-config.yaml:/etc/tempo/config.yaml
     networks:
       - netflix-net
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3200/ready"]
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3200/ready']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -106,14 +106,14 @@ services:
     user: root
     command: -config.file=/etc/loki/local-config.yaml -target=all
     ports:
-      - "3100:3100"
+      - '3100:3100'
     volumes:
       - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
       - loki-data:/tmp/loki
     networks:
       - netflix-net
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3100/ready']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -126,7 +126,7 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.retention.time=7d
     ports:
-      - "9090:9090"
+      - '9090:9090'
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
@@ -136,11 +136,11 @@ services:
     image: grafana/grafana:10.4.0
     container_name: grafana
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_SIGN_UP: 'false'
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
@@ -168,9 +168,10 @@ services:
       SERVICE_NAME: user-service
       LOKI_URL: http://loki:3100
     ports:
-      - "4001:4001"
+      - '4001:4001'
     volumes:
       - ./services/user-service/src:/app/services/user-service/src
+      - ./services/user-service/scripts:/app/services/user-service/scripts
       - ./packages/shared/src:/app/packages/shared/src
       - ./packages/tracing:/app/packages/tracing
       - ./packages/logger:/app/packages/logger
@@ -202,7 +203,7 @@ services:
       SERVICE_NAME: movie-service
       LOKI_URL: http://loki:3100
     ports:
-      - "4002:4002"
+      - '4002:4002'
     volumes:
       - ./services/movie-service/src:/app/services/movie-service/src
       - ./services/movie-service/scripts:/app/services/movie-service/scripts
@@ -238,9 +239,10 @@ services:
       SERVICE_NAME: review-service
       LOKI_URL: http://loki:3100
     ports:
-      - "4003:4003"
+      - '4003:4003'
     volumes:
       - ./services/review-service/src:/app/services/review-service/src
+      - ./services/review-service/scripts:/app/services/review-service/scripts
       - ./packages/shared/src:/app/packages/shared/src
       - ./packages/tracing:/app/packages/tracing
       - ./packages/logger:/app/packages/logger
@@ -276,7 +278,7 @@ services:
       SERVICE_NAME: gateway
       LOKI_URL: http://loki:3100
     ports:
-      - "8080:8080"
+      - '8080:8080'
     volumes:
       - ./gateway/src:/app/gateway/src
       - ./packages/shared/src:/app/packages/shared/src

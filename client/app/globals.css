@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #141414;
+  --color-surface: #1f1f1f;
+  --color-border: #2a2a2a;
+  --color-primary: #E50914;
+  --color-primary-hover: #C40812;
+  --color-muted: #a3a3a3;
+
+  --font-bebas: var(--font-bebas);
+  --font-inter: var(--font-inter);
+
+  --radius-lg: 0.5rem;
+  
+  --animate-spin: spin 1s linear infinite;
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+:root {
+  --background: #141414;
+  --foreground: #ffffff;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-inter), sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-bebas), sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    @apply bg-background text-white antialiased;
+  }
+}
+
+@layer components {
+  .netflix-card {
+    @apply bg-surface border border-border rounded-lg overflow-hidden;
+  }
+  
+  .input-field {
+    @apply w-full bg-[#333] border-none rounded text-white px-4 py-3 focus:bg-[#454545] focus:outline-none transition-colors duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white font-bold py-3 px-6 rounded hover:bg-primary-hover transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply bg-surface text-white border border-border py-2 px-4 rounded hover:bg-[#2a2a2a] transition-colors duration-200;
+  }
+}
+
+/* Custom transitions */
+.transition-standard {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #141414;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}

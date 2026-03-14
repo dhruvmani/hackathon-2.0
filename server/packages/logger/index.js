@@ -34,23 +34,20 @@ export function buildLogger(serviceName) {
   );
 
   const transports = [
-    // Console — pretty in dev, JSON in prod
     new winston.transports.Console({
       format: isDev
-        ? combine(sharedFormat, colorize({ all: true }), simple())
-        : combine(sharedFormat, json()),
+        ? combine(colorize({ all: true }), simple())
+        : json(),
     }),
   ];
 
-  // Loki — active in every env except test
   if (!isTest) {
     transports.push(
       new LokiTransport({
         host: process.env.LOKI_URL || 'http://loki:3100',
         labels: { service: serviceName },
-        json: true,
-        format: combine(sharedFormat, json()),
-        // Don't crash the service if Loki is unreachable
+        // Use default string transport with JSON format for best LogQL compatibility
+        format: json(),
         onConnectionError: (err) =>
           console.error(`[${serviceName}] Loki connection error:`, err.message),
         replaceTimestamp: true,
@@ -62,8 +59,8 @@ export function buildLogger(serviceName) {
 
   return winston.createLogger({
     level: process.env.LOG_LEVEL || 'info',
+    format: sharedFormat, // Apply metadata (traceId, timestamp, service) to ALL transports
     transports,
-    // Prevent winston from exiting on uncaught errors in transports
     exitOnError: false,
   });
 }
