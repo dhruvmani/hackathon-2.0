@@ -1,0 +1,28 @@
+{
+  "name": "netflix-clone",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "services/*",
+    "gateway",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:user\" \"npm run dev:movie\" \"npm run dev:review\" \"npm run dev:gateway\"",
+    "dev:user": "npm run dev --workspace=services/user-service",
+    "dev:movie": "npm run dev --workspace=services/movie-service",
+    "dev:review": "npm run dev --workspace=services/review-service",
+    "dev:gateway": "npm run dev --workspace=gateway",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

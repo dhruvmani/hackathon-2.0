@@ -1,0 +1,293 @@
+name: netflix-clone
+
+networks:
+  netflix-net:
+    driver: bridge
+
+volumes:
+  mongo-user-data:
+  mongo-movie-data:
+  mongo-review-data:
+  redis-data:
+  movie-banners:
+  loki-data:
+
+services:
+  # ── Databases ──────────────────────────────────────────────────────────────
+
+  mongo-user:
+    image: mongo:7
+    container_name: mongo-user
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-user-data:/data/db
+    networks:
+      - netflix-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mongo-movie:
+    image: mongo:7
+    container_name: mongo-movie
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-movie-data:/data/db
+    networks:
+      - netflix-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mongo-review:
+    image: mongo:7
+    container_name: mongo-review
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo-review-data:/data/db
+    networks:
+      - netflix-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - netflix-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ── Observability ──────────────────────────────────────────────────────────
+
+  tempo:
+    image: grafana/tempo:2.3.1
+    container_name: tempo
+    command: -config.file=/etc/tempo/config.yaml
+    ports:
+      - "3200:3200"
+      - "4318:4318"
+      - "4317:4317"
+    volumes:
+      - ./monitoring/tempo-config.yaml:/etc/tempo/config.yaml
+    networks:
+      - netflix-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3200/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    user: root
+    command: -config.file=/etc/loki/local-config.yaml -target=all
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/tmp/loki
+    networks:
+      - netflix-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - netflix-net
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - netflix-net
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+  # ── Services ───────────────────────────────────────────────────────────────
+
+  user-service:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+      target: development
+    container_name: user-service
+    env_file: .env
+    environment:
+      MONGO_URI_USER: mongodb://mongo-user:27017/users_db
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      OTEL_TRACES_SAMPLER: always_on
+      SERVICE_NAME: user-service
+      LOKI_URL: http://loki:3100
+    ports:
+      - "4001:4001"
+    volumes:
+      - ./services/user-service/src:/app/services/user-service/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/tracing:/app/packages/tracing
+      - ./packages/logger:/app/packages/logger
+      - ./packages/metrics:/app/packages/metrics
+    networks:
+      - netflix-net
+    depends_on:
+      mongo-user:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+
+  movie-service:
+    build:
+      context: .
+      dockerfile: services/movie-service/Dockerfile
+      target: development
+    container_name: movie-service
+    env_file: .env
+    environment:
+      MONGO_URI_MOVIE: mongodb://mongo-movie:27017/movies_db
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      OTEL_TRACES_SAMPLER: always_on
+      SERVICE_NAME: movie-service
+      LOKI_URL: http://loki:3100
+    ports:
+      - "4002:4002"
+    volumes:
+      - ./services/movie-service/src:/app/services/movie-service/src
+      - ./services/movie-service/scripts:/app/services/movie-service/scripts
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/tracing:/app/packages/tracing
+      - ./packages/logger:/app/packages/logger
+      - ./packages/metrics:/app/packages/metrics
+      - movie-banners:/app/services/movie-service/uploads/banners
+    networks:
+      - netflix-net
+    depends_on:
+      mongo-movie:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+
+  review-service:
+    build:
+      context: .
+      dockerfile: services/review-service/Dockerfile
+      target: development
+    container_name: review-service
+    env_file: .env
+    environment:
+      MONGO_URI_REVIEW: mongodb://mongo-review:27017/reviews_db
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      OTEL_TRACES_SAMPLER: always_on
+      SERVICE_NAME: review-service
+      LOKI_URL: http://loki:3100
+    ports:
+      - "4003:4003"
+    volumes:
+      - ./services/review-service/src:/app/services/review-service/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/tracing:/app/packages/tracing
+      - ./packages/logger:/app/packages/logger
+      - ./packages/metrics:/app/packages/metrics
+    networks:
+      - netflix-net
+    depends_on:
+      mongo-review:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+      target: development
+    container_name: gateway
+    env_file: .env
+    environment:
+      USER_SERVICE_PORT: 4001
+      MOVIE_SERVICE_PORT: 4002
+      REVIEW_SERVICE_PORT: 4003
+      USER_SERVICE_URL: http://user-service:4001/graphql
+      MOVIE_SERVICE_URL: http://movie-service:4002/graphql
+      REVIEW_SERVICE_URL: http://review-service:4003/graphql
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      OTEL_TRACES_SAMPLER: always_on
+      SERVICE_NAME: gateway
+      LOKI_URL: http://loki:3100
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./gateway/src:/app/gateway/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/tracing:/app/packages/tracing
+      - ./packages/logger:/app/packages/logger
+      - ./packages/metrics:/app/packages/metrics
+    networks:
+      - netflix-net
+    depends_on:
+      - user-service
+      - movie-service
+      - review-service
+      - tempo
+      - loki

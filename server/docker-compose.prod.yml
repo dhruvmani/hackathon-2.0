@@ -1,0 +1,48 @@
+name: netflix-clone
+
+services:
+  user-service:
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    volumes: []
+    restart: always
+
+  movie-service:
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    volumes:
+      # Keep banner storage in prod — no source mounts
+      - movie-banners:/app/services/movie-service/uploads/banners
+    restart: always
+
+  review-service:
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    volumes: []
+    restart: always
+
+  gateway:
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    volumes: []
+    restart: always
+
+  mongo-user:
+    restart: always
+
+  mongo-movie:
+    restart: always
+
+  mongo-review:
+    restart: always
+
+  redis:
+    restart: always

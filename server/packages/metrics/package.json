@@ -1,0 +1,12 @@
+{
+  "name": "@netflix-clone/metrics",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "prom-client": "^15.1.3"
+  }
+}
