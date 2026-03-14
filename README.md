@@ -2,6 +2,9 @@
 
 A full-stack Netflix Clone demonstration platform built with **Next.js 14**, **Apollo Federated GraphQL**, and a high-performance **Observability Stack** (Prometheus, Loki, Tempo, Grafana).
 
+## System in brif video
+ [Awesome Screenshot Video](https://www.awesomescreenshot.com/video/50432919?key=ca2f1376ace0eb48921086f944df7ea5)
+
 ## Project Overview
 
 This project serves as a reference implementation for a modern microservices architecture with a focus on deep observability. It features a complete frontend, a federated backend, and an integrated system for intentionally injecting anomalies to test reliability and monitoring.
